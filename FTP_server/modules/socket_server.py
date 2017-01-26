@@ -27,20 +27,22 @@ class FtpServer(SocketServer.BaseRequestHandler):
             self.data_parser(data)
 
     def data_parser(self,data):
+        try:
+            data=json.loads(data)
+            # print(data)
+            logger.info(" - %s"%str(data))
+            if data.get('action'):
+                  action_type=data['action']
+                  if hasattr(self,action_type):
+                      func=getattr(self,action_type)
+                      func(data)
+                  else:
+                      print('invalid action type ')
 
-        data=json.loads(data)
-        # print(data)
-        logger.info(" - %s"%str(data))
-        if data.get('action'):
-              action_type=data['action']
-              if hasattr(self,action_type):
-                  func=getattr(self,action_type)
-                  func(data)
-              else:
-                  print('invalid action type ')
-
-        else:
-            print('invalid')
+            else:
+                print('invalid')
+        except Exception,e:
+            logger.warning(" - %s"%str(e))
 
     def cmd_get(self,data):
         print (' - client ask for downloading data',str(data))
@@ -115,16 +117,18 @@ class FtpServer(SocketServer.BaseRequestHandler):
         password=data.get('password')
 
         auth_status,auth_msg=auth.authentication(username,password)
-        print (auth_msg,auth_status)
+        # print (auth_msg,auth_status)
         # auth_status = True
         if auth_status:
-            print('authentication',auth_msg)
+            # print('authentication',auth_msg)
+            logger.info("authentication,%s"%auth_msg)
             response_data={'status':'200','data':[]}
             self.login_user=username
             self.home_path='%s/%s'%(settings.USER_BASE_HOME_PATH,username)
 
         else:
-            print('authentication failed',auth_msg)
+            # print('authentication failed',auth_msg)
+            logger.warning("authentication failed,%s"%auth_msg)
             response_data={'status':'201','data':[]}
         self.request.send(json.dumps(response_data))
 

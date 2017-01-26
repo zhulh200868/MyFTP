@@ -9,7 +9,7 @@ from modules import socket_server
 from config import settings
 import commands,signal
 from logger import logger
-from multiprocessing import Pool,Process
+import pickle
 
 class FtpHander(object):
     def __init__(self,args):
@@ -27,6 +27,7 @@ class FtpHander(object):
                 self.help_msg()
     def start(self) :
         server=socket_server.SocketServer.ThreadingTCPServer((settings.BIND_HOST,settings.BIND_PORT),socket_server.FtpServer)
+        logger.info("Ftp_server is starting !")
         server.serve_forever()
 
     def stop(self):
@@ -35,9 +36,19 @@ class FtpHander(object):
                 pid = line
         try:
             os.kill(int(pid.strip()), signal.SIGKILL)
-            logger.info("Ftp_server is stopped !")
+            logger.info("Ftp_server is stopping !")
         except OSError, e:
             print '没有如此进程!!!'
+
+    def create(self):
+        username = raw_input("username: ")
+        passwd = raw_input("password: ")
+        data = {username:passwd}
+        if os.path.exists("%s"%settings.ACCOUNT_DB.get('name')):
+            value=pickle.load(open(settings.ACCOUNT_DB.get('name'),'rb'))
+            dictMerged1=dict(data.items()+value.items())
+            data = dictMerged1.copy()
+        pickle.dump(data,open(settings.ACCOUNT_DB.get('name'),'wb'))
 
 
 

@@ -18,22 +18,32 @@ def fetch_account():
 class engine_file():
     def auth(self,username,password):
         file_name=settings.ACCOUNT_DB.get('name')
-        assert file_name is not None
-        f=open(file_name,'rb')
-        acc_dic=json.load(f)
-        print (acc_dic)
-        user_in_db=acc_dic.get(username)
-        if user_in_db:
-            if int(password)==user_in_db.get('password'):
+        # assert file_name is not None
+        # # f=open(file_name,'rb')
+        # acc_dic=json.load(f)
+        value = pickle.load(open(settings.ACCOUNT_DB.get('name'),'rb'))
+        if username in value.keys():
+            if password == value.get(username):
                 msg=('pass authentication')
                 status=True
-            else:
-                msg=('wrong  password')
-                status=False
-        else:
-            msg=('no such user')
-            status=False
+                return status,msg
+        msg=('no such user')
+        status=False
         return status,msg
+
+        # print (acc_dic)
+        # user_in_db=acc_dic.get(username)
+        # if user_in_db:
+        #     if int(password)==user_in_db.get('password'):
+        #         msg=('pass authentication')
+        #         status=True
+        #     else:
+        #         msg=('wrong  password')
+        #         status=False
+        # else:
+        #     msg=('no such user')
+        #     status=False
+        # return status,msg
 
 
 class engine_mysql():
