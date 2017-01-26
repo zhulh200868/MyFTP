@@ -7,6 +7,7 @@ import sys,os
 DIR_BASES=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(DIR_BASES)
 import auth
+from logger import logger
 from config import settings
 
 class FtpServer(SocketServer.BaseRequestHandler):
@@ -18,16 +19,18 @@ class FtpServer(SocketServer.BaseRequestHandler):
             '301':'ready to recv'}
 
     def handle(self):
-        print (self.client_address)
-        shutdown_flag=False
-        while not shutdown_flag:
+        logger.info(' - %s'%str(self.client_address))
+        # print (self.client_address)
+        self.shutdown_flag=True
+        while self.shutdown_flag:
             data=self.request.recv(1024)
             self.data_parser(data)
 
     def data_parser(self,data):
 
         data=json.loads(data)
-        print(data)
+        # print(data)
+        logger.info(" - %s"%str(data))
         if data.get('action'):
               action_type=data['action']
               if hasattr(self,action_type):
@@ -40,7 +43,7 @@ class FtpServer(SocketServer.BaseRequestHandler):
             print('invalid')
 
     def cmd_get(self,data):
-        print ('client ask for downloading data',data)
+        print (' - client ask for downloading data',str(data))
         if hasattr(self,'login_user'):
             filename_path=data.get('filename')
             file_abs_path='%s/%s'%(self.home_path,filename_path)
@@ -73,7 +76,8 @@ class FtpServer(SocketServer.BaseRequestHandler):
         #print 'user is not authorized!'
 
     def cmd_put(self,data):
-        print ('client ask for loading data',data)
+        # print ('client ask for loading data',data)
+        logger.info("client ask for loading data,%s"%str(data))
         if hasattr(self,'login_user'):
             filename_path=data.get('filename')
             file_abs_path='%s/%s'%(self.home_path,filename_path)
@@ -84,7 +88,8 @@ class FtpServer(SocketServer.BaseRequestHandler):
                     'data':[{'filename':file_abs_path,'has_send':local_size}]}
                 file_action = "ab"
                 has_recv = int(local_size)
-                os.system("sed -i '$d' %s"%file_abs_path)
+                if has_recv < int(file_size):
+                    os.system("sed -i '$d' %s"%file_abs_path)
             else:
                 response_data={'status':'300',
                     'data':[{'filename':file_abs_path,'has_send':0}]}
@@ -93,29 +98,33 @@ class FtpServer(SocketServer.BaseRequestHandler):
             self.request.send(json.dumps(response_data))
             with open(file_abs_path,'%s'%file_action) as files:
                 while has_recv <= int(file_size):
-                    data = self.request.recv(1024)
+                    data = self.request.recv(4096)
                     #判断是否结束
-                    if data == "9999":
-                        break
-                    files.write(data)
-                    has_recv += len(data)
-
+                    try:
+                        if json.loads(data)['action'] == 'put' and json.loads(data)['status'] == '100':
+                            break
+                    except Exception,e:
+                        files.write(data)
+                        has_recv += len(data)
+    def cmd_quit(self,data):
+        self.shutdown_flag = False
+        logger.info(" - %s is exited !"%str(self.client_address))
 
     def user_auth(self,data):
         username=data.get('username')
         password=data.get('password')
 
-        # auth_status,auth_msg=auth.authentication(username,password)
-        # print (auth_msg,auth_status)
-        auth_status = True
+        auth_status,auth_msg=auth.authentication(username,password)
+        print (auth_msg,auth_status)
+        # auth_status = True
         if auth_status:
-            # print('authentication',auth_msg)
+            print('authentication',auth_msg)
             response_data={'status':'200','data':[]}
             self.login_user=username
             self.home_path='%s/%s'%(settings.USER_BASE_HOME_PATH,username)
 
         else:
-            # print('authentication failed',auth_msg)
+            print('authentication failed',auth_msg)
             response_data={'status':'201','data':[]}
         self.request.send(json.dumps(response_data))
 

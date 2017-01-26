@@ -7,6 +7,9 @@ DIR_BASES=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(DIR_BASES)
 from modules import socket_server
 from config import settings
+import commands,signal
+from logger import logger
+from multiprocessing import Pool,Process
 
 class FtpHander(object):
     def __init__(self,args):
@@ -27,7 +30,14 @@ class FtpHander(object):
         server.serve_forever()
 
     def stop(self):
-        pass
+        with open('/var/run/ftp.pid') as ftp:
+            for line in ftp:
+                pid = line
+        try:
+            os.kill(int(pid.strip()), signal.SIGKILL)
+            logger.info("Ftp_server is stopped !")
+        except OSError, e:
+            print '没有如此进程!!!'
 
 
 

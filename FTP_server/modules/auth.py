@@ -5,7 +5,7 @@ import os,sys
 DIR_BASES=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(DIR_BASES)
 from config import settings
-import json
+import json,pickle
 
 def fetch_account():
     acc_storage=settings.ACCOUNT_DB.get('engine')
@@ -45,7 +45,6 @@ class engine_mysql():
 
 
 def authentication(user,passwd):
-    return
-    # engine_obj=fetch_account()
-    # return engine_obj.auth(user,passwd )
+    engine_obj=fetch_account()
+    return engine_obj.auth(user,passwd )
 

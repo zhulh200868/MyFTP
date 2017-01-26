@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding=utf8 -*-
 
-import sys,os
+import os,sys
 import socket
 import json
 import time
 from decimal import getcontext, Decimal
+from passwd import getpass
 
 class FTPClient(object):
     response_code={
@@ -14,7 +15,9 @@ class FTPClient(object):
             '202':'user expired',
             '300':'ready to send',
             '301':'ready to recv',
+            '100':'finish',
         }
+    getcontext().prec = 2
     def __init__(self,argv):
         self.args=argv
 
@@ -60,7 +63,9 @@ class FTPClient(object):
 
             username=raw_input('username:').strip()
             if len(username)==0:continue
-            password=raw_input('password:').strip()
+            # password=raw_input('password:').strip()
+            print "password:",
+            password = getpass("*").strip()
             if len(password)==0:continue
             data=json.dumps({'username':username,
                              'password':password,
@@ -127,7 +132,6 @@ class FTPClient(object):
                 else:
                     print ('---file----download---success!')
     def cmd_put(self,cmd_list):
-        getcontext().prec = 2
         print("cmd_list-->%s"%cmd_list)
         if len(cmd_list)<2:
             print (' filename is mandatory!')
@@ -151,19 +155,28 @@ class FTPClient(object):
                     with open(filename,'rb') as files:
                         files.seek(has_send,0)
                         while has_send < size:
-                            data = files.read(1024)
+                            data = files.read(4096)
                             self.sock.send(data)
                             has_send += len(data)
                             sys.stdout.write('\r')
                             num1 = int(Decimal(has_send)/size*100)
                             num2 = int(Decimal(has_send)/size*100)*'='
-                            # print(num2)
-                            # sys.stdout.write('已发送%s%%|' %(num1))
                             time.sleep(0.2)
                             sys.stdout.write('已发送%s%%|%s' %(num1,num2))
                             sys.stdout.flush()
                     print("上传成功\n")
-                    self.sock.send('9999')
+                    client_response={'action':'put',
+                            'status':'100'
+                            }
+                    self.sock.send(json.dumps(client_response))
+
+    def cmd_quit(self,cmd_list):
+        msg_str={'action':'cmd_quit',
+                     }
+        self.sock.send(json.dumps(msg_str))
+        time.sleep(1)
+        self.sock.close()
+        sys.exit('quit!')
 
     def help_msg(self):
 
