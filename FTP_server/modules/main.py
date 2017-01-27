@@ -26,9 +26,12 @@ class FtpHander(object):
             else:
                 self.help_msg()
     def start(self) :
-        server=socket_server.SocketServer.ThreadingTCPServer((settings.BIND_HOST,settings.BIND_PORT),socket_server.FtpServer)
-        logger.info("Ftp_server is starting !")
-        server.serve_forever()
+        try:
+            server=socket_server.SocketServer.ThreadingTCPServer((settings.BIND_HOST,settings.BIND_PORT),socket_server.FtpServer)
+            logger.info(" - Ftp_server is starting !")
+            server.serve_forever()
+        except Exception,e:
+            logger.error(" - Ftp_server cann't start,because %s"%str(e))
 
     def stop(self):
         with open('/var/run/ftp.pid') as ftp:
@@ -36,9 +39,10 @@ class FtpHander(object):
                 pid = line
         try:
             os.kill(int(pid.strip()), signal.SIGKILL)
-            logger.info("Ftp_server is stopping !")
+            logger.info(" - Ftp_server is stopping !")
         except OSError, e:
-            print '没有如此进程!!!'
+            logger.error(" - 没有如此进程!!!")
+            # print '没有如此进程!!!'
 
     def create(self):
         username = raw_input("username: ")

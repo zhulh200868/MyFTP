@@ -9,6 +9,7 @@ sys.path.append(DIR_BASES)
 import auth
 from logger import logger
 from config import settings
+import commands
 
 class FtpServer(SocketServer.BaseRequestHandler):
     response_code={
@@ -41,7 +42,8 @@ class FtpServer(SocketServer.BaseRequestHandler):
                       # print('invalid action type ')
 
             else:
-                print('invalid')
+                logger.warning(" - invalid")
+                # print('invalid')
         except Exception,e:
             logger.warning(" - %s"%str(e))
 
@@ -89,37 +91,50 @@ class FtpServer(SocketServer.BaseRequestHandler):
             filename_path=data.get('filename')
             file_abs_path='%s/%s'%(self.home_path,filename_path)
             file_size = data.get('size')
-            if os.path.isfile(file_abs_path):
-                if os.path.exists(file_abs_path):
-                    os.system("sed -i '$d' %s"%file_abs_path)
-                    local_size = os.stat(file_abs_path).st_size
-                    response_data={'status':'300',
-                        'data':[{'filename':file_abs_path,'has_send':local_size}]}
-                    file_action = "ab"
-                    has_recv = int(local_size)
-                    # if has_recv < int(file_size):
-                    #     os.system("sed -i '$d' %s"%file_abs_path)
-                else:
-                    response_data={'status':'300',
-                        'data':[{'filename':file_abs_path,'has_send':0}]}
-                    has_recv = 0
-                    file_action = "wb"
-                self.request.send(json.dumps(response_data))
-                with open(file_abs_path,'%s'%file_action) as files:
-                    while has_recv <= int(file_size):
-                        data = self.request.recv(4096)
-                        #判断是否结束
-                        try:
-                            if json.loads(data)['action'] == 'put' and json.loads(data)['status'] == '100':
-                                logger.info(' - load file done !')
-                                break
-                        except Exception,e:
-                            files.write(data)
-                            has_recv += len(data)
+            if os.path.exists(file_abs_path):
+                os.system("sed -i '$d' %s"%file_abs_path)
+                local_size = os.stat(file_abs_path).st_size
+                response_data={'status':'300',
+                    'data':[{'filename':file_abs_path,'has_send':local_size}]}
+                file_action = "ab"
+                has_recv = int(local_size)
+                # if has_recv < int(file_size):
+                #     os.system("sed -i '$d' %s"%file_abs_path)
             else:
-                response_data={'status':'401',
-                        'data':[{'filename':file_abs_path,'has_send':0}]}
-                self.request.send(json.dumps(response_data))
+                response_data={'status':'300',
+                    'data':[{'filename':file_abs_path,'has_send':0}]}
+                has_recv = 0
+                file_action = "wb"
+            self.request.send(json.dumps(response_data))
+            with open(file_abs_path,'%s'%file_action) as files:
+                while has_recv <= int(file_size):
+                    data = self.request.recv(4096)
+                    #判断是否结束
+                    try:
+                        if json.loads(data)['action'] == 'put' and json.loads(data)['status'] == '100':
+                            logger.info(' - load file done !')
+                            break
+                    except Exception,e:
+                        files.write(data)
+                        has_recv += len(data)
+            # else:
+            #     response_data={'status':'401',
+            #             'data':[{'filename':file_abs_path,'has_send':0}]}
+            #     self.request.send(json.dumps(response_data))
+
+    def cmd_ls(self,data):
+        # self.request.send("hello")
+        logger.debug(data.get('path'))
+        if len(data.get('path')) == 2:
+            status,output = commands.getstatusoutput("%s %s"%(data.get('path')[0],data.get('path')[1]))
+        else:
+            status,output = commands.getstatusoutput("ls .")
+        logger.debug(" - %s"%str(output))
+        if status:
+            pass
+        else:
+            self.request.send(output)
+
 
     def cmd_quit(self,data):
         self.shutdown_flag = False

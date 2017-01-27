@@ -183,7 +183,7 @@ class FTPClient(object):
                                     sys.stdout.write('\r')
                                     num1 = int(Decimal(has_send)/size*100)
                                     num2 = int(Decimal(has_send)/size*50)*'='
-                                    time.sleep(0.2)
+                                    time.sleep(0.1)
                                     sys.stdout.write('已发送%s%%|%s' %(num1,num2))
                                     sys.stdout.flush()
                             print(" %s 上传成功\n"%filename)
@@ -195,6 +195,30 @@ class FTPClient(object):
                     print("%s 不存在！"%filename)
             else:
                 print("%s 不是文件！"%filename)
+    def cmd_ls(self,cmd_list=""):
+        msg_str={'action':'cmd_ls',
+                 'path':cmd_list
+                     }
+        self.sock.send(json.dumps(msg_str))
+        data=self.sock.recv(4096)
+        tmp_list=[]
+        # counter = 1
+        # data_len = len(data.split("\n"))
+        # num = (data_num/4)*4
+        for i in data.split("\n"):
+            if len(tmp_list) == 4:
+                print("%s   %s   %s   %s"%(tmp_list[0],tmp_list[1],tmp_list[2],tmp_list[3]))
+                tmp_list=[]
+            else:
+                tmp_list.append(i)
+                # counter += 1
+        # if counter == data_len:
+        if len(tmp_list) == 3:
+            print("%s   %s   %s\n"%(tmp_list[0],tmp_list[1],tmp_list[2]))
+        elif len(tmp_list) == 2:
+            print("%s   %s\n"%(tmp_list[0],tmp_list[1]))
+        else:
+            print("%s\n"%tmp_list[0])
 
     def cmd_quit(self,cmd_list):
         msg_str={'action':'cmd_quit',
