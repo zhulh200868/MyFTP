@@ -7,6 +7,7 @@ import json
 import time
 from decimal import getcontext, Decimal
 from passwd import getpass
+import tab
 
 class FTPClient(object):
     response_code={
