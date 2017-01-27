@@ -37,7 +37,8 @@ class FtpServer(SocketServer.BaseRequestHandler):
                       func=getattr(self,action_type)
                       func(data)
                   else:
-                      print('invalid action type ')
+                      logger.warning(" - invalid action type !")
+                      # print('invalid action type ')
 
             else:
                 print('invalid')
@@ -45,7 +46,8 @@ class FtpServer(SocketServer.BaseRequestHandler):
             logger.warning(" - %s"%str(e))
 
     def cmd_get(self,data):
-        print (' - client ask for downloading data',str(data))
+        # print (' - client ask for downloading data',str(data))
+        logger.info(" - client ask for downloading data,%s"%str(data))
         if hasattr(self,'login_user'):
             filename_path=data.get('filename')
             file_abs_path='%s/%s'%(self.home_path,filename_path)
@@ -56,21 +58,24 @@ class FtpServer(SocketServer.BaseRequestHandler):
                                'data':[{'filename':filename_path,'size':file_size}]}
                 self.request.send(json.dumps(response_data))
                 client_response=json.loads(self.request.recv(1024))
-                print(client_response)
+                # print(client_response)
+                logger.info(" - %s"%str(client_response))
                 if client_response.get('status')=='301':
                     f=open(file_abs_path,'rb')
-                    #no self.request.sendall(f.read())
-                    send_size=0
-                    while  file_size!=send_size:
+                    has_send = client_response['data'][0].get('has_send')
+                    f.seek(has_send,0)
+                    # print has_send,file_size
+                    while  int(file_size) != int(has_send):
                         data=f.read(4096)
                         self.request.send(data)
-                        send_size+=len(data)
-                        print send_size,file_size
+                        has_send+=len(data)
+                        # print has_send,file_size
                     else:
-                        print 'send file done'
+                        # print 'send file done'
+                        logger.info(' - send file done !')
                         f.close()
             else:
-                response_data={'status':'300',
+                response_data={'status':'401',
                         'data':[{'filename':filename_path,'size':0}]}
                 self.request.send(json.dumps(response_data))
             #print ('the file dose not exist!')
@@ -79,38 +84,46 @@ class FtpServer(SocketServer.BaseRequestHandler):
 
     def cmd_put(self,data):
         # print ('client ask for loading data',data)
-        logger.info("client ask for loading data,%s"%str(data))
+        logger.info(" - client ask for loading data,%s"%str(data))
         if hasattr(self,'login_user'):
             filename_path=data.get('filename')
             file_abs_path='%s/%s'%(self.home_path,filename_path)
             file_size = data.get('size')
-            if os.path.exists(file_abs_path):
-                local_size = os.stat(file_abs_path).st_size
-                response_data={'status':'300',
-                    'data':[{'filename':file_abs_path,'has_send':local_size}]}
-                file_action = "ab"
-                has_recv = int(local_size)
-                if has_recv < int(file_size):
+            if os.path.isfile(file_abs_path):
+                if os.path.exists(file_abs_path):
                     os.system("sed -i '$d' %s"%file_abs_path)
+                    local_size = os.stat(file_abs_path).st_size
+                    response_data={'status':'300',
+                        'data':[{'filename':file_abs_path,'has_send':local_size}]}
+                    file_action = "ab"
+                    has_recv = int(local_size)
+                    # if has_recv < int(file_size):
+                    #     os.system("sed -i '$d' %s"%file_abs_path)
+                else:
+                    response_data={'status':'300',
+                        'data':[{'filename':file_abs_path,'has_send':0}]}
+                    has_recv = 0
+                    file_action = "wb"
+                self.request.send(json.dumps(response_data))
+                with open(file_abs_path,'%s'%file_action) as files:
+                    while has_recv <= int(file_size):
+                        data = self.request.recv(4096)
+                        #判断是否结束
+                        try:
+                            if json.loads(data)['action'] == 'put' and json.loads(data)['status'] == '100':
+                                logger.info(' - load file done !')
+                                break
+                        except Exception,e:
+                            files.write(data)
+                            has_recv += len(data)
             else:
-                response_data={'status':'300',
-                    'data':[{'filename':file_abs_path,'has_send':0}]}
-                has_recv = 0
-                file_action = "wb"
-            self.request.send(json.dumps(response_data))
-            with open(file_abs_path,'%s'%file_action) as files:
-                while has_recv <= int(file_size):
-                    data = self.request.recv(4096)
-                    #判断是否结束
-                    try:
-                        if json.loads(data)['action'] == 'put' and json.loads(data)['status'] == '100':
-                            break
-                    except Exception,e:
-                        files.write(data)
-                        has_recv += len(data)
+                response_data={'status':'401',
+                        'data':[{'filename':file_abs_path,'has_send':0}]}
+                self.request.send(json.dumps(response_data))
+
     def cmd_quit(self,data):
         self.shutdown_flag = False
-        logger.info(" - %s is exited !"%str(self.client_address))
+        logger.info(" - %s is quited !"%str(self.client_address))
 
     def user_auth(self,data):
         username=data.get('username')
@@ -121,14 +134,14 @@ class FtpServer(SocketServer.BaseRequestHandler):
         # auth_status = True
         if auth_status:
             # print('authentication',auth_msg)
-            logger.info("authentication,%s"%auth_msg)
+            logger.info(" - authentication,%s"%auth_msg)
             response_data={'status':'200','data':[]}
             self.login_user=username
             self.home_path='%s/%s'%(settings.USER_BASE_HOME_PATH,username)
 
         else:
             # print('authentication failed',auth_msg)
-            logger.warning("authentication failed,%s"%auth_msg)
+            logger.warning(" - authentication failed,%s"%auth_msg)
             response_data={'status':'201','data':[]}
         self.request.send(json.dumps(response_data))
 

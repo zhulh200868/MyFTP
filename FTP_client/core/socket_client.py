@@ -115,65 +115,86 @@ class FTPClient(object):
             print server_response
             #server_response={'status':300,'data':[{'filename':'xxx','size':333},]}
             if server_response.get('status')=='300':
-
+                # local_filename=os.path.basename(remote_filename)
+                local_filename = "%s/%s"%(os.path.dirname(__file__),remote_filename.split("/")[-1])
+                print(local_filename)
+                if os.path.exists("%s/%s"%(os.path.dirname(__file__),remote_filename.split("/")[-1])):
+                    os.system("sed -i '$d' %s"%local_filename)
+                    received_size=local_size = os.stat("%s/%s"%(os.path.dirname(__file__),remote_filename.split("/")[-1])).st_size
+                else:
+                    received_size=local_size=0
                 total_file_size=int(server_response['data'][0].get('size'))
-                client_response={'action':'get',
-                                 'filename':remote_filename,
-                                 'status':'301'
+                client_response={'action':'cd_get',
+                                 'status':'301',
+                                 'data':[{'filename':remote_filename,'has_send':local_size}]
                                  }
+                print(local_size)
                 self.sock.send(json.dumps(client_response))
-                received_size=0
-                local_filename=os.path.basename(remote_filename)
-                f=open(local_filename,'wb')
-                while total_file_size!=received_size:
+                if received_size:
+                    file_action = "ab"
+                else:
+                    file_action = "wb"
+                f=open(local_filename,'%s'%file_action)
+                while int(total_file_size) != int(received_size):
                     data=self.sock.recv(4096)
 
                     received_size+=len(data)
 
                     f.write(data)
+                    sys.stdout.write('\r')
+                    num1 = int(Decimal(received_size)/total_file_size*100)
+                    num2 = int(Decimal(received_size)/total_file_size*50)*'='
+                    time.sleep(0.1)
+                    sys.stdout.write('已发送%s%%|%s' %(num1,num2))
+                    sys.stdout.flush()
                 else:
-                    print ('---file----download---success!')
+                    print (' %s 下载成功！\n'%remote_filename.split("/")[-1])
+            else:print('%s 不是文件！'%remote_filename)
+
     def cmd_put(self,cmd_list):
         print("cmd_list-->%s"%cmd_list)
         if len(cmd_list)<2:
             print (' filename is mandatory!')
         else:
             filename=cmd_list[1]
-            if os.path.exists(filename):
-                size = os.stat(filename).st_size
-                msg_str={'action':'cmd_put',
-                         'filename':filename.split('/')[-1],
-                         'size':size
-                         }
-                self.sock.send(json.dumps(msg_str))
-                server_response=json.loads(self.sock.recv(1024))
-                print server_response
-                #server_response={'status':300,'data':[{'filename':'xxx','size':333},]}
-                if server_response.get('status')=='300':
-                        if server_response['data'][0].get('has_send'):
-                            has_send = int(server_response['data'][0].get('has_send'))
-                        else:
-                            has_send = 0
-                        print('has_send:%s'%has_send)
-                        with open(filename,'rb') as files:
-                            files.seek(has_send,0)
-                            while has_send < size:
-                                data = files.read(4096)
-                                self.sock.send(data)
-                                has_send += len(data)
-                                sys.stdout.write('\r')
-                                num1 = int(Decimal(has_send)/size*100)
-                                num2 = int(Decimal(has_send)/size*100)*'='
-                                time.sleep(0.2)
-                                sys.stdout.write('已发送%s%%|%s' %(num1,num2))
-                                sys.stdout.flush()
-                        print("上传成功\n")
-                        client_response={'action':'put',
-                                'status':'100'
-                                }
-                        self.sock.send(json.dumps(client_response))
+            if os.path.isfile(filename):
+                if os.path.exists(filename):
+                    size = os.stat(filename).st_size
+                    msg_str={'action':'cmd_put',
+                             'filename':filename.split('/')[-1],
+                             'size':size
+                             }
+                    self.sock.send(json.dumps(msg_str))
+                    server_response=json.loads(self.sock.recv(1024))
+                    print server_response
+                    #server_response={'status':300,'data':[{'filename':'xxx','size':333},]}
+                    if server_response.get('status')=='300':
+                            if server_response['data'][0].get('has_send'):
+                                has_send = int(server_response['data'][0].get('has_send'))
+                            else:
+                                has_send = 0
+                            print('has_send:%s'%has_send)
+                            with open(filename,'rb') as files:
+                                files.seek(has_send,0)
+                                while has_send < size:
+                                    data = files.read(4096)
+                                    self.sock.send(data)
+                                    has_send += len(data)
+                                    sys.stdout.write('\r')
+                                    num1 = int(Decimal(has_send)/size*100)
+                                    num2 = int(Decimal(has_send)/size*50)*'='
+                                    time.sleep(0.2)
+                                    sys.stdout.write('已发送%s%%|%s' %(num1,num2))
+                                    sys.stdout.flush()
+                            print(" %s 上传成功\n"%filename)
+                            client_response={'action':'put',
+                                    'status':'100'
+                                    }
+                            self.sock.send(json.dumps(client_response))
+                else:
+                    print("%s 不存在！"%filename)
             else:
-                print("%s 不存在！"%filename)
+                print("%s 不是文件！"%filename)
 
     def cmd_quit(self,cmd_list):
         msg_str={'action':'cmd_quit',
