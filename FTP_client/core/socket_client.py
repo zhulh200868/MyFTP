@@ -223,6 +223,23 @@ class FTPClient(object):
         else:
             print("%s\n"%tmp_list[0])
         '''
+
+    def cmd_pwd(self,cmd_list):
+        msg_str={'action':'cmd_pwd',
+                     }
+        self.sock.send(json.dumps(msg_str))
+        data=self.sock.recv(4096)
+        print(data)
+
+    def cmd_cd(self,cmd_list):
+        msg_str={'action':'cmd_cd',
+                  'path':cmd_list
+                     }
+        self.sock.send(json.dumps(msg_str))
+        # data=self.sock.recv(4096)
+        # print(data)
+
+
     def cmd_quit(self,cmd_list):
         msg_str={'action':'cmd_quit',
                      }

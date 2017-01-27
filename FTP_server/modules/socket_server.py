@@ -128,19 +128,28 @@ class FtpServer(SocketServer.BaseRequestHandler):
         if len(data.get('path')) == 2:
             status,output = commands.getstatusoutput("%s -l %s"%(data.get('path')[0],data.get('path')[1]))
         else:
-            status,output = commands.getstatusoutput("ls -l .")
+            status,output = commands.getstatusoutput("ls -l %s"%self.current_path)
         '''
         # 这里实现是ls的功能
         if len(data.get('path')) == 2:
             status,output = commands.getstatusoutput("%s %s"%(data.get('path')[0],data.get('path')[1]))
         else:
-            status,output = commands.getstatusoutput("ls .")
+            status,output = commands.getstatusoutput("ls %s"%self.current_path)
         '''
         # logger.debug(" - %s"%str(output))
         if status:
             pass
         else:
             self.request.send(output)
+
+    def cmd_pwd(self,data):
+        self.request.send(self.current_path)
+
+    def cmd_cd(self,data):
+        if len(data.get('path')) == 2:
+            self.current_path = data.get('path')[1]
+        else:
+            self.current_path = self.home_path
 
 
     def cmd_quit(self,data):
@@ -160,6 +169,7 @@ class FtpServer(SocketServer.BaseRequestHandler):
             response_data={'status':'200','data':[]}
             self.login_user=username
             self.home_path='%s/%s'%(settings.USER_BASE_HOME_PATH,username)
+            self.current_path=self.home_path
 
         else:
             # print('authentication failed',auth_msg)
