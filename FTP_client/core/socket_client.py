@@ -201,6 +201,9 @@ class FTPClient(object):
                      }
         self.sock.send(json.dumps(msg_str))
         data=self.sock.recv(4096)
+        print(data)
+        '''
+        # 在这里是实现ls功能，并每行显示4个
         tmp_list=[]
         # counter = 1
         # data_len = len(data.split("\n"))
@@ -219,7 +222,7 @@ class FTPClient(object):
             print("%s   %s\n"%(tmp_list[0],tmp_list[1]))
         else:
             print("%s\n"%tmp_list[0])
-
+        '''
     def cmd_quit(self,cmd_list):
         msg_str={'action':'cmd_quit',
                      }

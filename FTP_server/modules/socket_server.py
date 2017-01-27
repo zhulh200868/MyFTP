@@ -124,12 +124,19 @@ class FtpServer(SocketServer.BaseRequestHandler):
 
     def cmd_ls(self,data):
         # self.request.send("hello")
-        logger.debug(data.get('path'))
+        # logger.debug(data.get('path'))
+        if len(data.get('path')) == 2:
+            status,output = commands.getstatusoutput("%s -l %s"%(data.get('path')[0],data.get('path')[1]))
+        else:
+            status,output = commands.getstatusoutput("ls -l .")
+        '''
+        # 这里实现是ls的功能
         if len(data.get('path')) == 2:
             status,output = commands.getstatusoutput("%s %s"%(data.get('path')[0],data.get('path')[1]))
         else:
             status,output = commands.getstatusoutput("ls .")
-        logger.debug(" - %s"%str(output))
+        '''
+        # logger.debug(" - %s"%str(output))
         if status:
             pass
         else:
