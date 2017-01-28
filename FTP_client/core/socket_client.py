@@ -55,8 +55,11 @@ class FTPClient(object):
             sys.exit(e)
 
     def handle(self):
-        if self.auth():
-            self.interactive()
+        try:
+            if self.auth():
+                self.interactive()
+        except KeyboardInterrupt,e:
+            self.cmd_quit("quit")
 
     def auth(self):
         count=0

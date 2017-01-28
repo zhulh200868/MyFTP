@@ -169,6 +169,8 @@ class FtpServer(SocketServer.BaseRequestHandler):
             response_data={'status':'200','data':[]}
             self.login_user=username
             self.home_path='%s/%s'%(settings.USER_BASE_HOME_PATH,username)
+            if os.path.exists(self.home_path) is False:
+                os.mkdir(self.home_path)
             self.current_path=self.home_path
 
         else:
